@@ -38,7 +38,7 @@ nav {
 .search-container {
   position: relative;
   background: #f0f0f0;
-  border-bottom: 1px solid #d6d2cf;
+  border-bottom: 2px solid #d6d2cf;
 }
 
 .search-container > input {

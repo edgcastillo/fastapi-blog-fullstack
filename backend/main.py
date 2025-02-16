@@ -81,6 +81,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
 )
+
+@app.get("/ping")
+async def ping():
+    return {"status": "healthy", "version": "1.0.0"}
+
 @app.get("/")
 def root():
     return {"status": "healthy", "version": "1.0.0"}

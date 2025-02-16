@@ -5,7 +5,7 @@ export default function Layout() {
   return (
     <div>
       <Navigation />
-      <main>
+      <main className="mt-[2rem]">
         <Outlet />
       </main>
     </div>
