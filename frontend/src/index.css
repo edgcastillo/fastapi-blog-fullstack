@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Meow+Script&family=Roboto:wght@100..900&display=swap');
+@import "tailwindcss";
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.5rem;
+
+  --icon-size-sm: 1rem;
+  --icon-size-md: 1.25rem;
+  --icon-size-lg: 2rem;
+  --icon-size-xl: 3rem;
+
+  --font-family-meow: "Meow Script", cursive, sans-serif;
+}
+
+body {
+  background-color: #f0f0f0;
+  box-sizing: border-box;
+}
+
+nav {
+  height: 7rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 3rem;
+}
+
+.search-container {
+  position: relative;
+  background: #f0f0f0;
+  border-bottom: 1px solid #d6d2cf;
+}
+
+.search-container > input {
+  padding-left: 1.5rem;
+  margin-bottom: 0.3rem;
+  outline: none;
+}
+.search-container > svg {
+  position: absolute;
+  top: 5px;
+  left: 0;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.logo-container > svg {
+  width: var(--icon-size-xl);
+  height: var(--icon-size-xl);
+}
+
+.logo-container > h5 {
+  font-family: var(--font-family-meow);
+  font-size: var(--font-size-xl);
+}
