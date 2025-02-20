@@ -1,67 +1,23 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-from typing import Annotated, List
-from datetime import datetime
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, Depends
+from typing import List
 from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import Session
 
+from post.models import Post, PostCreate, PostUpdate
+from db.config import get_session
+from repositories.post_repository import PostRepository
+from db.config import init_db
 
-class PostBase(BaseModel):
-    # Annotated is used to add validation and metadata to the field
-    title: Annotated[str, Field(min_length=1, max_length=50)]
-    description: Annotated[str, Field(min_length=1, max_length=100)]
-    content: Annotated[str, Field(min_length=1)]
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Handles startup and shutdown events"""
+    init_db()
+    yield
 
-class PostCreate(PostBase):
-    pass
+app = FastAPI(lifespan=lifespan)
 
-class Post(PostBase):
-    id: Annotated[int, Field(gt=0)]
-    created_at: datetime = Field(default_factory=datetime.now)
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "id": 1,
-                "title": "My First Post",
-                "description": "A brief description",
-                "content": "The full content...",
-                "created_at": "2024-02-12T10:00:00"
-            }
-        }
-
-class PostUpdate(PostBase):
-    title: Annotated[str, Field(min_length=1, max_length=50)] | None = None
-    description: Annotated[str, Field(min_length=1, max_length=100)] | None = None
-    content: Annotated[str, Field(min_length=1)] | None = None
-
-
-# Create a list of sample posts
-posts = [
-    Post(
-        id=1,
-        title="First Post",
-        description="This is my first post",
-        content="Content of the first post"
-    ),
-    Post(
-        id=2,
-        title="Second Post",
-        description="This is my second post",
-        content="Content of the second post"
-    )
-]
-
-def generate_new_post_id() -> int:
-    if not posts:
-        return 1
-    return max(p.id for p in posts) + 1
-
-def find_post_by_id(id: int) -> Post | None:
-    # generator that will return the first post that matches the id
-    return next((post for post in posts if post.id == id), None)
-
-app = FastAPI()
-
+# CORS configuration
 origins = [
     "http://localhost:5173",
     "https://localhost:5173",
@@ -77,11 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-)
-
+# Health check endpoints
 @app.get("/ping")
 async def ping():
     return {"status": "healthy", "version": "1.0.0"}
@@ -90,53 +42,45 @@ async def ping():
 def root():
     return {"status": "healthy", "version": "1.0.0"}
 
+# Post endpoints
 @app.get("/posts", response_model=List[Post])
-async def get_posts():
-    return posts
+async def get_posts(
+    session: Session = Depends(get_session)
+):
+    repository = PostRepository(session)
+    return repository.get_all()
 
 @app.get("/posts/{post_id}", response_model=Post)
-async def get_post(post_id: int):
-    post = find_post_by_id(post_id)
-    if post is None:
-        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
-    return post
+async def get_post(
+    post_id: int,
+    session: Session = Depends(get_session)
+):
+    repository = PostRepository(session)
+    return repository.get_by_id(post_id)
 
 @app.post("/posts", response_model=Post, status_code=201)
-async def create_post(post: PostCreate):
-    new_id = generate_new_post_id()
-    new_post = Post(id=new_id, **post.model_dump())
-    posts.append(new_post)
-    return new_post
+async def create_post(
+    post: PostCreate,
+    session: Session = Depends(get_session)
+):
+    repository = PostRepository(session)
+    return repository.create(post)
+
+@app.patch("/posts/{post_id}", response_model=Post)
+async def update_post(
+    post_id: int,
+    post_update: PostUpdate,
+    session: Session = Depends(get_session)
+):
+    repository = PostRepository(session)
+    return repository.update(post_id, post_update)
 
 @app.delete("/posts/{post_id}", status_code=204)
-async def delete_post(post_id: int):
-    post = find_post_by_id(post_id)
-    if post is None:
-        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
-    posts.remove(post)
+async def delete_post(
+    post_id: int,
+    session: Session = Depends(get_session)
+):
+    repository = PostRepository(session)
+    repository.delete(post_id)
     return {"message": "Post deleted successfully"}
-
-@app.patch("/posts/{post_id}", response_model=Post, description="Update a post by ID with partial data")
-async def update_post(post_id: int, post_update: PostUpdate):
-    post_to_update = find_post_by_id(post_id)
-    if post_to_update is None:
-        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
-    try:
-        # create a dictionary of the update data
-        update_data = post_update.model_dump(exclude_unset=True)
-        if not update_data:
-            raise HTTPException(status_code=400, detail="No update data provided")
-
-        # Create a new post with updated data while preserving the original
-        new_post = post_to_update.model_dump()
-        new_post.update(update_data)
-
-        # Create Post instance
-        updated_post = Post(**new_post)
-        
-        # Replace the old post with the new one
-        posts[posts.index(post_to_update)] = updated_post
-        return updated_post
-    except ValueError as e:
-        raise HTTPException(status_code=500, detail=f"Error updating post: {e}")
 
